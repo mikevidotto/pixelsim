@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"log"
 	"os"
-    "time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -25,6 +24,11 @@ type Cell struct {
 	Material Material
 }
 
+type Player struct {
+    Position []int
+    HP int
+}
+
 var world [worldWidth][worldHeight]Cell
 var frameCounter int
 
@@ -35,29 +39,33 @@ func (g *Game) Update() error {
 	if frameCounter > 0 && frameCounter < 10 {
 		// place falling sand at the top
 		for x := range worldWidth {
-            log.Printf("Generating sand at world[%d][%d]", x, 0)
-			//log.Println("framecounter: ", frameCounter)
-			world[x][0].Material = MaterialSand
+            if x > 20 && x < 30 {
+                log.Printf("Generating sand at world[%d][%d]", x, 0)
+                //log.Println("framecounter: ", frameCounter)
+                world[x][0].Material = MaterialSand
+            }
 		}
 	}
 
-	if (frameCounter > 200 && frameCounter < 250) && frameCounter%2 == 0 {
-		// place falling sand at the top
-		for x := range worldWidth {
-			if x%2 == 0 {
-				//log.Println("framecounter: ", frameCounter)
-				world[x][0].Material = MaterialSand
-			}
-		}
-	}
+	//if (frameCounter > 200 && frameCounter < 250) && frameCounter%2 == 0 {
+	//	// place falling sand at the top
+	//	for x := range worldWidth {
+	//		for range 5 {
+	//			//log.Println("framecounter: ", frameCounter)
+	//			world[x][0].Material = MaterialSand
+	//		}
+	//	}
+	//}
 
 	// simple sand simulation
 	for x := range worldHeight {
-		for y := range worldWidth {
-			if world[x][y].Material == MaterialSand && world[x][y+1].Material == MaterialEmpty {
-				log.Printf("Pixel at world[%d][%d] has Material = %d\n", x, y, world[x][y].Material)
-                world[x][y].Material = MaterialEmpty
-                world[x][y+1].Material = MaterialSand
+		for y := worldWidth - 1; y >= 0; y-- {
+			if y+1 <= worldHeight-1 {
+				if world[x][y].Material == MaterialSand && world[x][y+1].Material == MaterialEmpty {
+					log.Printf("Pixel at world[%d][%d] has Material = %d\n", x, y, world[x][y].Material)
+					world[x][y].Material = MaterialEmpty
+					world[x][y+1].Material = MaterialSand
+				}
 			}
 		}
 	}
@@ -75,13 +83,15 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		for y := range worldWidth {
 			switch world[x][y].Material {
 			case MaterialSand:
+				world[x][y].Material = MaterialSand
 				screen.Set(x, y, color.RGBA{194, 178, 128, 255})
 			case MaterialDirt:
+				world[x][y].Material = MaterialDirt
 				screen.Set(x, y, color.RGBA{123, 63, 0, 255})
 			case MaterialEmpty:
-                screen.Set(x, y, color.RGBA{0, 0, 0, 255})
 			default:
-                screen.Set(x, y, color.RGBA{255, 0, 0, 255})
+				world[x][y].Material = MaterialEmpty
+				screen.Set(x, y, color.RGBA{0, 0, 0, 255})
 			}
 		}
 	}
@@ -95,7 +105,7 @@ func main() {
 	var exampleworld [worldHeight][worldWidth]Cell
 	for i := range worldHeight {
 		for j := range worldWidth {
-			if j == 41 {
+			if j > 41 {
 				exampleworld[i][j] = Cell{Material: MaterialDirt}
 			} else {
 				exampleworld[i][j] = Cell{Material: MaterialEmpty}
@@ -116,11 +126,15 @@ func main() {
 	if err != nil {
 		log.Fatal("error generating world:", err)
 	}
-    fmt.Println(world)
+	fmt.Println(world)
+
+    player := Player {
+        Position: []int{30, 30},
+        HP: 100 , 
+    }
 
 	ebiten.SetWindowSize(worldWidth*5, worldHeight*5)
 	ebiten.SetWindowTitle("Sand Simulation")
-
 
 	if err := ebiten.RunGame(&Game{}); err != nil {
 		log.Fatal(err)
@@ -128,16 +142,16 @@ func main() {
 }
 
 func NewWorld() ([worldHeight][worldWidth]Cell, error) {
-    var newWorld [worldHeight][worldWidth]Cell
-    bytes, err := os.ReadFile("exampleworld.json")
-    if err != nil {
-        return newWorld, err
-    }
+	var newWorld [worldHeight][worldWidth]Cell
+	bytes, err := os.ReadFile("exampleworld.json")
+	if err != nil {
+		return newWorld, err
+	}
 
-    err = json.Unmarshal(bytes, &newWorld)
-    if err != nil {
-        return newWorld, err
-    }
+	err = json.Unmarshal(bytes, &newWorld)
+	if err != nil {
+		return newWorld, err
+	}
 
-    return newWorld, nil
+	return newWorld, nil
 }
