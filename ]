@@ -45,24 +45,18 @@ func (g *Game) Update() error {
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
-		if player.Position[0] <= 0 {
+		if player.Position[0] == 0 {
 		} else {
 			if world[player.Position[0]-1][player.Position[1]].Material == MaterialEmpty {
 				player.Position[0] -= 1
-			} else if world[player.Position[0]-1][player.Position[1]-1].Material == MaterialEmpty {
-                player.Position[1] -= 1
-                player.Position[0] -= 1
-            }
+			}
 		}
 	} else if ebiten.IsKeyPressed(ebiten.KeyRight) {
-		if player.Position[0]+1 >= worldWidth {
+		if player.Position[0]+1 > worldWidth {
 		} else {
 			if world[player.Position[0]+1][player.Position[1]].Material == MaterialEmpty {
 				player.Position[0] += 1
-			} else if world[player.Position[0]+1][player.Position[1]-1].Material == MaterialEmpty {
-                player.Position[1] -= 1
-                player.Position[0] += 1
-            }
+			}
 		}
 	}
 
@@ -71,7 +65,7 @@ func (g *Game) Update() error {
     log.Printf("Player position: x:%d, y:%d | \n", player.Position[0], player.Position[1])
     log.Printf("Current material: %d\n", world[player.Position[0]][player.Position[1]].Material)
     if world[player.Position[0]][player.Position[1]+1].Material == MaterialEmpty {
-        log.Printf("In the air: %d\n", world[player.Position[0]][player.Position[1]+1].Material)
+        log.Printf("In the air: %d\n", world[player.Position[0]+1][player.Position[1]].Material)
     } else {
         if player.Position[1]+1 < worldHeight {
             log.Printf("Material under: %d\n", world[player.Position[0]][player.Position[1]+1].Material)
@@ -213,11 +207,11 @@ func main() {
 	fmt.Println(world)
 
 	player = Player{
-		Position: []int{45, 1},
+		Position: []int{30, 1},
 		HP:       100,
 	}
 
-	ebiten.SetWindowSize(worldWidth*10, worldHeight*10)
+	ebiten.SetWindowSize(worldWidth*5, worldHeight*5)
 	ebiten.SetWindowTitle("Sand Simulation")
 
 	if err := ebiten.RunGame(&Game{}); err != nil {

@@ -1,0 +1,158 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"image/color"
+	"log"
+	"os"
+
+	"github.com/hajimehoshi/ebiten/v2"
+)
+
+type Material int
+
+const (
+	worldWidth             = 50
+	worldHeight            = 50
+	MaterialEmpty Material = iota
+	MaterialSand
+	MaterialDirt
+)
+
+type Cell struct {
+	Material Material
+}
+
+type Player struct {
+    Position []int
+    HP int
+}
+
+var world [worldWidth][worldHeight]Cell
+var player Player
+var frameCounter int
+
+type Game struct{}
+
+func (g *Game) Update() error {
+
+	if frameCounter > 0 && frameCounter < 10 {
+		// place falling sand at the top
+		for x := range worldWidth {
+            if x > 20 && x < 30 {
+                log.Printf("Generating sand at world[%d][%d]", x, 0)
+                //log.Println("framecounter: ", frameCounter)
+                world[x][0].Material = MaterialSand
+            }
+		}
+	}
+
+	//if (frameCounter > 200 && frameCounter < 250) && frameCounter%2 == 0 {
+	//	// place falling sand at the top
+	//	for x := range worldWidth {
+	//		for range 5 {
+	//			//log.Println("framecounter: ", frameCounter)
+	//			world[x][0].Material = MaterialSand
+	//		}
+	//	}
+	//}
+
+	// simple sand simulation
+	for x := range worldHeight {
+		for y := worldWidth - 1; y >= 0; y-- {
+			if y+1 <= worldHeight-1 {
+				if world[x][y].Material == MaterialSand && world[x][y+1].Material == MaterialEmpty {
+					log.Printf("Pixel at world[%d][%d] has Material = %d\n", x, y, world[x][y].Material)
+					world[x][y].Material = MaterialEmpty
+					world[x][y+1].Material = MaterialSand
+				}
+			}
+		}
+	}
+
+	frameCounter++
+	return nil
+}
+
+func (g *Game) Draw(screen *ebiten.Image) {
+	// clear
+	screen.Fill(color.RGBA{0, 0, 0, 255})
+
+	// draw world
+	for x := range worldHeight {
+		for y := range worldWidth {
+			switch world[x][y].Material {
+			case MaterialSand:
+				world[x][y].Material = MaterialSand
+				screen.Set(x, y, color.RGBA{194, 178, 128, 255})
+			case MaterialDirt:
+				world[x][y].Material = MaterialDirt
+				screen.Set(x, y, color.RGBA{123, 63, 0, 255})
+			case MaterialEmpty:
+			default:
+				world[x][y].Material = MaterialEmpty
+				screen.Set(x, y, color.RGBA{0, 0, 0, 255})
+			}
+		}
+	}
+}
+
+func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return worldWidth, worldHeight
+}
+
+func main() {
+	var exampleworld [worldHeight][worldWidth]Cell
+	for i := range worldHeight {
+		for j := range worldWidth {
+			if j > 41 {
+				exampleworld[i][j] = Cell{Material: MaterialDirt}
+			} else {
+				exampleworld[i][j] = Cell{Material: MaterialEmpty}
+			}
+		}
+	}
+
+	bytes, err := json.Marshal(exampleworld)
+	if err != nil {
+		log.Fatal("error marshalling example world:", err)
+	}
+	err = os.WriteFile("exampleworld.json", bytes, 666)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	world, err = NewWorld()
+	if err != nil {
+		log.Fatal("error generating world:", err)
+	}
+	fmt.Println(world)
+
+    player = Player {
+        Position: []int{30, 30},
+        HP: 100 , 
+    }
+
+	ebiten.SetWindowSize(worldWidth*5, worldHeight*5)
+	ebiten.SetWindowTitle("Sand Simulation")
+
+	if err := ebiten.RunGame(&Game{}); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func NewWorld() ([worldHeight][worldWidth]Cell, error) {
+	var newWorld [worldHeight][worldWidth]Cell
+	bytes, err := os.ReadFile("exampleworld.json")
+	if err != nil {
+		return newWorld, err
+	}
+
+	err = json.Unmarshal(bytes, &newWorld)
+	if err != nil {
+		return newWorld, err
+	}
+
+	return newWorld, nil
+}
