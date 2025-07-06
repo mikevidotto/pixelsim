@@ -34,69 +34,97 @@ var world [worldWidth][worldHeight]Cell
 var player Player
 var frameCounter int
 var jumpCooldown = true
+var jumpWindow = true
 
 type Game struct{}
 
 func (g *Game) Update() error {
 	//log.Printf("Player x position: %d\n", player.Position[0])
 	//log.Printf("Player y position: %d\n", player.Position[1])
+
+	//player gravity should happen even if the player is pressing space
 	if world[player.Position[0]][player.Position[1]+1].Material == MaterialEmpty {
-		player.Position[1] += 1
+		log.Printf("In the air: %d\n", world[player.Position[0]][player.Position[1]+1].Material)
+		if jumpWindow == false {
+			player.Position[1] += 1
+		} else {
+            player.Position[1] += 1
+        }
+	} else {
+		if player.Position[1]+1 < worldHeight {
+			log.Printf("Material under: %d\n", world[player.Position[0]][player.Position[1]+1].Material)
+		} else {
+			log.Printf("No material under\n")
+		}
 	}
 
-	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
 		if player.Position[0] <= 0 {
 		} else {
 			if world[player.Position[0]-1][player.Position[1]].Material == MaterialEmpty {
 				player.Position[0] -= 1
 			} else if world[player.Position[0]-1][player.Position[1]-1].Material == MaterialEmpty {
-                player.Position[1] -= 1
-                player.Position[0] -= 1
-            }
+				player.Position[1] -= 1
+				player.Position[0] -= 1
+			}
 		}
-	} else if ebiten.IsKeyPressed(ebiten.KeyRight) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
 		if player.Position[0]+1 >= worldWidth {
 		} else {
 			if world[player.Position[0]+1][player.Position[1]].Material == MaterialEmpty {
 				player.Position[0] += 1
 			} else if world[player.Position[0]+1][player.Position[1]-1].Material == MaterialEmpty {
-                player.Position[1] -= 1
-                player.Position[0] += 1
-            }
+				player.Position[1] -= 1
+				player.Position[0] += 1
+			}
 		}
 	}
 
-	jumpTimer := time.NewTimer(1 * time.Second)
-    
-    log.Printf("Player position: x:%d, y:%d | \n", player.Position[0], player.Position[1])
-    log.Printf("Current material: %d\n", world[player.Position[0]][player.Position[1]].Material)
-    if world[player.Position[0]][player.Position[1]+1].Material == MaterialEmpty {
-        log.Printf("In the air: %d\n", world[player.Position[0]][player.Position[1]+1].Material)
-    } else {
-        if player.Position[1]+1 < worldHeight {
-            log.Printf("Material under: %d\n", world[player.Position[0]][player.Position[1]+1].Material)
-        } else {
-            log.Printf("No material under\n")
-        }
-    }
-	if ebiten.IsKeyPressed(ebiten.KeySpace) {
-		if jumpCooldown == true {
-			go func() {
-				log.Printf("timer started.")
-				<-jumpTimer.C
-				log.Printf("%s\n", "timer has fired.")
-				jumpCooldown = true
-			}()
+	jumpResetTimer := time.NewTimer(2 * time.Second)
+	jumpWindowTimer := time.NewTimer(1 * time.Second)
 
-			log.Printf("Material Empty: %d\n", MaterialEmpty)
-			log.Printf("world[player.Position[0]][player.Position[1]].Material: %d\n", world[player.Position[0]][player.Position[1]].Material)
-			log.Printf("world[player.Position[0]][player.Position[1]+1].Material: %d\n", world[player.Position[0]][player.Position[1]+1].Material)
+	//log.Printf("Player position: x:%d, y:%d | \n", player.Position[0], player.Position[1])
+	//log.Printf("Current material: %d\n", world[player.Position[0]][player.Position[1]].Material)
+	if ebiten.IsKeyPressed(ebiten.KeySpace) {
+		log.Printf("Spacebar\n")
+		log.Println("jumpwindow: ", jumpWindow)
+
+        if world[player.Position[0]][player.Position[1]+1].Material != MaterialEmpty {
+            go func() {
+                log.Printf("jump reset timer started.")
+                <-jumpResetTimer.C
+                log.Printf("%s\n", "jump reset timer has fired.")
+                jumpCooldown = true
+            }()
+
+            //log.Printf("Material Empty: %d\n", MaterialEmpty)
+            //log.Printf("world[player.Position[0]][player.Position[1]].Material: %d\n", world[player.Position[0]][player.Position[1]].Material)
+            //log.Printf("world[player.Position[0]][player.Position[1]+1].Material: %d\n", world[player.Position[0]][player.Position[1]+1].Material)
+            go func() {
+                log.Printf("\n\njump window timer started.\n\n")
+                <-jumpWindowTimer.C
+                log.Printf("jump window timer has fired.")
+                jumpWindow = false 
+            }()
+        }
+
+		if jumpWindow == true && jumpCooldown == true {
+			log.Printf("\n\nJUMPING????\n\n")
+			if player.Position[1] > 0 && player.Position[1] < worldWidth {
+				player.Position[1] -= 1
+			}
+		} else if jumpCooldown == true {
+			log.Printf("\n\nJUMPING OFF GROUND\n\n")
 			if world[player.Position[0]][player.Position[1]+1].Material != MaterialEmpty {
 				log.Printf("Jump!\n")
-				player.Position[1] -= 30
+				if player.Position[1] > 0 && player.Position[1] < worldWidth {
+					player.Position[1] -= 1
+				}
 			}
-			jumpCooldown = false
+		} else {
+
 		}
+		jumpCooldown = false
 	}
 	//if ebiten.IsKeyPressed(ebiten.KeyUp) {
 	//	if player.Position[1] <= 0 {
@@ -136,18 +164,18 @@ func (g *Game) Update() error {
 		for y := worldWidth - 1; y >= 0; y-- {
 			if y+1 <= worldHeight-1 {
 				if world[x][y].Material == MaterialSand {
-                    if world[x][y+1].Material == MaterialEmpty {
-                        //log.Printf("Pixel at world[%d][%d] has Material = %d\n", x, y, world[x][y].Material)
-                        world[x][y].Material = MaterialEmpty
-                        world[x][y+1].Material = MaterialSand
-                    } else if world[x-1][y+1].Material == MaterialEmpty {
-                        world[x][y].Material = MaterialEmpty
-                        world[x-1][y+1].Material = MaterialSand
-                    } else if world[x+1][y+1].Material == MaterialEmpty {
-                        world[x][y].Material = MaterialEmpty
-                        world[x+1][y+1].Material = MaterialSand
-                    }
-                }
+					if world[x][y+1].Material == MaterialEmpty {
+						//log.Printf("Pixel at world[%d][%d] has Material = %d\n", x, y, world[x][y].Material)
+						world[x][y].Material = MaterialEmpty
+						world[x][y+1].Material = MaterialSand
+					} else if world[x-1][y+1].Material == MaterialEmpty {
+						world[x][y].Material = MaterialEmpty
+						world[x-1][y+1].Material = MaterialSand
+					} else if world[x+1][y+1].Material == MaterialEmpty {
+						world[x][y].Material = MaterialEmpty
+						world[x+1][y+1].Material = MaterialSand
+					}
+				}
 			}
 		}
 	}
